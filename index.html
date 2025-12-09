@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GereTonCompte | Suivi Financier Parfait</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <i class="fas fa-chart-line"></i>
+            <h1>GereTonCompte</h1>
+        </div>
+        <div id="auth-status">
+            <button id="auth-button" class="btn primary">
+                <i class="fas fa-sign-in-alt"></i> Se Connecter
+            </button>
+        </div>
+    </header>
+
+    <main id="app-content" class="hidden">
+        
+        <section class="card stats-section">
+            <div class="header-stats">
+                <h2>Synthèse du mois</h2>
+                <input type="month" id="month-filter" value="2025-12"> </div>
+            
+            <div class="summary-grid">
+                <div class="summary-item item-revenue">
+                    <i class="fas fa-plus-circle"></i>
+                    <p>Revenus :</p>
+                    <p id="total-revenu" class="amount-display revenue-text">0.00 €</p>
+                </div>
+                <div class="summary-item item-expense">
+                    <i class="fas fa-minus-circle"></i>
+                    <p>Dépenses :</p>
+                    <p id="total-depense" class="amount-display expense-text">0.00 €</p>
+                </div>
+                <div class="summary-item item-net total">
+                    <i class="fas fa-balance-scale"></i>
+                    <p>Solde Net :</p>
+                    <p id="solde-net" class="amount-display">0.00 €</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card form-section">
+            <h2><i class="fas fa-hand-holding-usd"></i> Nouvelle Transaction</h2>
+            <form id="transaction-form">
+                
+                <div class="form-group type-selector">
+                    <label>Type :</label>
+                    <div class="radio-buttons">
+                        <input type="radio" id="type-depense" name="type" value="depense" checked>
+                        <label for="type-depense" class="btn-type expense"><i class="fas fa-shopping-cart"></i> Dépense</label>
+
+                        <input type="radio" id="type-revenu" name="type" value="revenu">
+                        <label for="type-revenu" class="btn-type revenue"><i class="fas fa-money-bill-wave"></i> Revenu</label>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="date">Date (JJ/MM/AAAA) :</label>
+                        <input type="text" id="date" placeholder="JJ/MM/AAAA" required maxlength="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="montant">Montant (€) :</label>
+                        <input type="number" id="montant" placeholder="50.00" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description :</label>
+                    <input type="text" id="description" placeholder="Ex: Loyer, Salaire de décembre" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="categorie">Catégorie :</label>
+                    <select id="categorie" required>
+                        <option value="">-- Choisir une catégorie --</option>
+                        <option value="Alimentation">Alimentation</option>
+                        <option value="Logement">Logement</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Loisirs">Loisirs</option>
+                        <option value="Salaire">Salaire</option>
+                        <option value="Autres">Autres</option>
+                    </select>
+                </div>
+
+                <div class="form-group checkbox-group">
+       			
+                    <label for="recurrent"> <input type="checkbox" id="recurrent"> Transaction récurrente</label>
+                </div>
+
+                <button type="submit" class="btn primary full-width"><i class="fas fa-check"></i> Enregistrer la Transaction</button>
+            </form>
+        </section>
+        
+        <section class="card transaction-list-section">
+            <h2><i class="fas fa-list-ul"></i> Historique Détaillé</h2>
+            <table id="transactions-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Catégorie</th>
+                        <th>Type</th>
+                        <th class="right-align">Montant</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="transactions-tbody">
+                    </tbody>
+            </table>
+        </section>
+
+    </main>
+
+    <div id="auth-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Connexion / Inscription</h3>
+            <form id="auth-form">
+                <div class="form-group">
+                    <label for="auth-email">Email :</label>
+                    <input type="email" id="auth-email" required>
+                </div>
+                <div class="form-group password-group">
+                    <label for="auth-password">Mot de passe :</label>
+                    <input type="password" id="auth-password" required>
+                    <span class="toggle-password" onclick="togglePasswordVisibility()">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <button type="submit" class="btn primary full-width" id="submit-auth-btn">Connexion</button>
+                <button type="button" class="btn secondary full-width mt-10" id="toggle-mode-btn">
+                    Pas de compte ? S'inscrire
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
