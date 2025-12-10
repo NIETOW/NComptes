@@ -7,6 +7,7 @@
     --card-background: #ffffff;
     --text-color: #333;
     --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --color-subtext: #888;
 }
 
 * {
@@ -88,15 +89,25 @@ header h1 {
 .mt-10 {
     margin-top: 10px;
 }
+.ml-10 {
+    margin-left: 10px;
+}
 
 /* --- LAYOUT PRINCIPAL (MAIN) --- */
 main {
     max-width: 1200px;
     margin: 30px auto;
     padding: 0 20px;
+    /* Ajusté pour ajouter la section de catégorie sur toute la largeur si besoin */
     display: grid;
     grid-template-columns: 1fr 2fr; /* Colonne 1: Formulaire / Colonne 2: Tableau */
     gap: 25px;
+}
+
+.container { /* Utilisé dans stock.html mais laissé pour compatibilité si besoin */
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
 }
 
 .card {
@@ -193,7 +204,7 @@ h2 i {
     gap: 15px;
 }
 
-input[type="text"], input[type="date"], input[type="number"], select {
+input[type="text"], input[type="date"], input[type="number"], select, textarea {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
@@ -201,9 +212,14 @@ input[type="text"], input[type="date"], input[type="number"], select {
     transition: border-color 0.2s;
 }
 
-input:focus, select:focus {
+input:focus, select:focus, textarea:focus {
     border-color: var(--primary-color);
     outline: none;
+}
+/* Style spécifique pour l'input de jour JJ qui est plus petit */
+#day-input, #edit-day-input {
+    max-width: 100px;
+    text-align: center;
 }
 
 /* Sélecteur de Type (Radio buttons améliorés) */
@@ -275,6 +291,12 @@ input:focus, select:focus {
     text-align: right;
 }
 
+/* Conteneur pour les boutons d'actions */
+.action-buttons-wrapper {
+    display: flex;
+    gap: 5px;
+}
+
 .delete-button {
     background-color: var(--danger-color);
     color: white;
@@ -283,9 +305,71 @@ input:focus, select:focus {
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.85em;
+    transition: background-color 0.2s;
+}
+.delete-button:hover {
+    background-color: #c9303c;
 }
 
-/* --- MODAL (Authentification) --- */
+.edit-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.2s;
+}
+.edit-button:hover {
+    background-color: #4a40d6;
+}
+
+/* --- NEW CATEGORY SUMMARY SECTION (for filtering) --- */
+.category-summary-section {
+    grid-column: 1 / 3; /* Prend toute la largeur sous les autres sections */
+    margin-top: 25px;
+}
+
+.category-flex-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.category-list-card {
+    flex: 1;
+    padding: 15px 25px;
+    border-radius: 10px;
+    background-color: var(--card-background);
+    box-shadow: var(--shadow-light);
+}
+
+.category-list-card h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 10px;
+}
+
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 0.95em;
+    border-bottom: 1px dashed #f0f0f0;
+}
+
+.category-item:last-child {
+    border-bottom: none;
+}
+
+.category-item .amount {
+    font-weight: bold;
+}
+
+/* --- MODAL (Authentification & Édition) --- */
 .modal {
     position: fixed;
     z-index: 1000;
@@ -305,7 +389,7 @@ input:focus, select:focus {
     padding: 30px;
     border-radius: 10px;
     width: 90%;
-    max-width: 400px;
+    max-width: 450px; /* Légèrement plus large pour l'édition */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     position: relative;
     animation: fadeIn 0.3s;
@@ -318,10 +402,13 @@ input:focus, select:focus {
 
 .close-button {
     color: #aaa;
-    float: right;
+    position: absolute; /* Position absolue dans le modal-content */
+    top: 10px;
+    right: 20px;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    line-height: 1;
 }
 
 .close-button:hover,
@@ -343,12 +430,21 @@ input:focus, select:focus {
     padding: 5px;
 }
 
-/* Règle pour les petits écrans */
+/* Règle pour les petits écrans - Mise à jour pour la nouvelle section */
 @media (max-width: 800px) {
+    header {
+        padding: 10px 20px;
+    }
     main {
         grid-template-columns: 1fr;
     }
-    .stats-section, .form-section, .transaction-list-section {
+    .stats-section, .form-section, .transaction-list-section, .category-summary-section {
         grid-column: 1 / 2;
+    }
+    .category-flex-container {
+        flex-direction: column;
+    }
+    .summary-grid {
+        grid-template-columns: 1fr;
     }
 }

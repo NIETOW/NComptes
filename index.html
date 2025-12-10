@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
 
@@ -35,72 +35,65 @@
             <div class="summary-grid">
                 <div class="summary-item item-revenue">
                     <i class="fas fa-plus-circle"></i>
-                    <p>Revenus</p>
+                    <p>Revenus :</p>
                     <p id="total-revenu" class="amount-display revenue-text">0.00 €</p>
                 </div>
                 <div class="summary-item item-expense">
                     <i class="fas fa-minus-circle"></i>
-                    <p>Dépenses</p>
+                    <p>Dépenses :</p>
                     <p id="total-depense" class="amount-display expense-text">0.00 €</p>
                 </div>
                 <div class="summary-item item-net total">
                     <i class="fas fa-balance-scale"></i>
-                    <p>Solde Net</p>
+                    <p>Solde Net :</p>
                     <p id="solde-net" class="amount-display">0.00 €</p>
                 </div>
             </div>
         </section>
 
         <section class="card form-section">
-            <h2><i class="fas fa-hand-holding-usd"></i>Nouvelle Transaction</h2>
+            <h2><i class="fas fa-hand-holding-usd"></i> Nouvelle Transaction</h2>
             <form id="transaction-form">
                 
                 <div class="form-group type-selector">
                     <label>Type :</label>
                     <div class="radio-buttons">
                         <input type="radio" id="type-depense" name="type" value="depense" checked>
-                        <label for="type-depense" class="btn-type expense"><i class="fas fa-shopping-cart"></i>Dépense</label>
+                        <label for="type-depense" class="btn-type expense"><i class="fas fa-shopping-cart"></i> Dépense</label>
 
                         <input type="radio" id="type-revenu" name="type" value="revenu">
-                        <label for="type-revenu" class="btn-type revenue"><i class="fas fa-money-bill-wave"></i>Revenu</label>
+                        <label for="type-revenu" class="btn-type revenue"><i class="fas fa-money-bill-wave"></i> Revenu</label>
                     </div>
                 </div>
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="date">Date (JJ/MM/AAAA)</label>
-                        <input type="text" id="date" placeholder="JJ/MM/AAAA" required maxlength="10">
+                        <label for="day-input">Jour (JJ) :</label>
+                        <input type="number" id="day-input" placeholder="JJ" min="1" max="31" required maxlength="2">
                     </div>
                     <div class="form-group">
-                        <label for="montant">Montant (€)</label>
+                        <label for="montant">Montant (€) :</label>
                         <input type="number" id="montant" placeholder="50.00" step="0.01" required>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="description">Description</label>
+                    <label for="description">Description :</label>
                     <input type="text" id="description" placeholder="Ex: Loyer, Salaire de décembre" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="categorie">Catégorie</label>
+                    <label for="categorie">Catégorie :</label>
                     <select id="categorie" required>
                         <option value="">-- Choisir une catégorie --</option>
-                        <option value="Alimentation">Alimentation</option>
-                        <option value="Logement">Logement</option>
-                        <option value="Transport">Transport</option>
-                        <option value="Loisirs">Loisirs</option>
-                        <option value="Salaire">Salaire</option>
-                        <option value="Autres">Autres</option>
                     </select>
                 </div>
 
                 <div class="form-group checkbox-group">
-       			
-                    <label for="recurrent"> <input type="checkbox" id="recurrent">Transaction récurrente</label>
+                    <label for="recurrent"> <input type="checkbox" id="recurrent"> Transaction récurrente</label>
                 </div>
 
-                <button type="submit" class="btn primary full-width"><i class="fas fa-check"></i>Enregistrer la Transaction</button>
+                <button type="submit" class="btn primary full-width"><i class="fas fa-check"></i> Enregistrer la Transaction</button>
             </form>
         </section>
         
@@ -114,7 +107,7 @@
                         <th>Catégorie</th>
                         <th>Type</th>
                         <th class="right-align">Montant</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="transactions-tbody">
@@ -122,19 +115,37 @@
             </table>
         </section>
 
+        <section class="category-summary-section">
+            <h2><i class="fas fa-chart-pie"></i> Répartition par Catégorie</h2>
+            <div class="category-flex-container">
+                <div class="category-list-card">
+                    <h3 class="revenue-text"><i class="fas fa-money-bill-wave"></i> Revenus</h3>
+                    <div id="revenue-category-list">
+                        <p style="text-align: center; color: var(--color-subtext);">Pas de revenus enregistrés ce mois.</p>
+                    </div>
+                </div>
+                <div class="category-list-card">
+                    <h3 class="expense-text"><i class="fas fa-shopping-cart"></i> Dépenses</h3>
+                    <div id="expense-category-list">
+                        <p style="text-align: center; color: var(--color-subtext);">Pas de dépenses enregistrées ce mois.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <div id="auth-modal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
+            <span class="close-button" onclick="document.getElementById('auth-modal').classList.add('hidden')">&times;</span>
             <h3>Connexion / Inscription</h3>
             <form id="auth-form">
                 <div class="form-group">
-                    <label for="auth-email">Email </label>
+                    <label for="auth-email">Email :</label>
                     <input type="email" id="auth-email" required>
                 </div>
                 <div class="form-group password-group">
-                    <label for="auth-password">Mot de passe</label>
+                    <label for="auth-password">Mot de passe :</label>
                     <input type="password" id="auth-password" required>
                     <span class="toggle-password" onclick="togglePasswordVisibility()">
                         <i class="fas fa-eye"></i>
@@ -148,6 +159,55 @@
         </div>
     </div>
     
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" onclick="document.getElementById('edit-modal').classList.add('hidden')">&times;</span>
+            <h3>Modifier la Transaction</h3>
+            <form id="edit-transaction-form">
+                <input type="hidden" id="edit-transaction-id">
+                
+                <div class="form-group type-selector">
+                    <label>Type :</label>
+                    <div class="radio-buttons">
+                        <input type="radio" id="edit-type-depense" name="edit-type" value="depense">
+                        <label for="edit-type-depense" class="btn-type expense"><i class="fas fa-shopping-cart"></i> Dépense</label>
+
+                        <input type="radio" id="edit-type-revenu" name="edit-type" value="revenu">
+                        <label for="edit-type-revenu" class="btn-type revenue"><i class="fas fa-money-bill-wave"></i> Revenu</label>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-day-input">Jour (JJ) :</label>
+                        <input type="number" id="edit-day-input" placeholder="JJ" min="1" max="31" required maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-montant">Montant (€) :</label>
+                        <input type="number" id="edit-montant" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-description">Description :</label>
+                    <input type="text" id="edit-description" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-categorie">Catégorie :</label>
+                    <select id="edit-categorie" required>
+                        <option value="">-- Choisir une catégorie --</option>
+                    </select>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label for="edit-recurrent"> <input type="checkbox" id="edit-recurrent"> Transaction récurrente</label>
+                </div>
+
+                <button type="submit" class="btn primary full-width" id="save-edit-btn"><i class="fas fa-save"></i> Enregistrer les Modifications</button>
+            </form>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>

@@ -28,6 +28,16 @@ const totalDepenseEl = document.getElementById('total-depense');
 const soldeNetEl = document.getElementById('solde-net');
 const monthFilter = document.getElementById('month-filter');
 
+// NOUVELLES RÉFÉRENCES DOM POUR LE FORMULAIRE PRINCIPAL
+const dayInput = document.getElementById('day-input');
+const typeDepenseRadio = document.getElementById('type-depense');
+const typeRevenuRadio = document.getElementById('type-revenu');
+const categorieSelect = document.getElementById('categorie');
+
+// NOUVELLES RÉFÉRENCES DOM POUR LE RÉSUMÉ PAR CATÉGORIE
+const revenueCategoryListEl = document.getElementById('revenue-category-list');
+const expenseCategoryListEl = document.getElementById('expense-category-list');
+
 // Modal d'authentification
 const authModal = document.getElementById('auth-modal');
 const authForm = document.getElementById('auth-form');
@@ -35,75 +45,123 @@ const authEmailInput = document.getElementById('auth-email');
 const authPasswordInput = document.getElementById('auth-password');
 const submitAuthBtn = document.getElementById('submit-auth-btn');
 const toggleModeBtn = document.getElementById('toggle-mode-btn');
-const closeButton = document.querySelector('.modal-content .close-button');
-const dateInput = document.getElementById('date'); // Référence au champ de date
+const closeButton = document.querySelector('#auth-modal .close-button'); // Sélecteur plus précis
+
+// Modal d'édition
+const editModal = document.getElementById('edit-modal');
+const editTransactionForm = document.getElementById('edit-transaction-form');
+const editTransactionIdInput = document.getElementById('edit-transaction-id');
+const editDayInput = document.getElementById('edit-day-input');
+const editMontantInput = document.getElementById('edit-montant');
+const editDescriptionInput = document.getElementById('edit-description');
+const editCategorieSelect = document.getElementById('edit-categorie');
+const editRecurrentCheckbox = document.getElementById('edit-recurrent');
+const editTypeDepenseRadio = document.getElementById('edit-type-depense');
+const editTypeRevenuRadio = document.getElementById('edit-type-revenu');
+
 
 let currentUser = null;
 let isLoginMode = true; // État initial: Connexion
 
+
+// NOUVEAU: Catégories séparées
+const EXPENSE_CATEGORIES = [
+    "Alimentation", "Logement", "Transport", "Loisirs", "Factures", "Santé", "Vêtements", "Autres Dépenses"
+];
+const REVENUE_CATEGORIES = [
+    "Salaire", "Indemnités", "Cadeau", "Remboursement", "Investissement", "Autres Revenus"
+];
+
+
 // =================================================================
-// 3. FONCTIONS UTILITAIRES POUR LA DATE
+// 3. FONCTIONS UTILITAIRES POUR LA DATE & CATÉGORIES
 // =================================================================
 
 /**
- * Gère le formatage automatique (ajout des '/') et le saut de champ (auto-tab).
- * @param {Event} event 
- */
-function handleDateInput(event) {
-    const input = event.target;
-    let value = input.value.replace(/[^0-9]/g, ''); // N'autorise que les chiffres
-
-    // Longueur actuelle
-    const len = value.length;
-    
-    // Application du format JJ/MM/AAAA
-    if (len > 2 && len <= 4) {
-        value = value.substring(0, 2) + '/' + value.substring(2);
-    } else if (len > 4) {
-        value = value.substring(0, 2) + '/' + value.substring(2, 4) + '/' + value.substring(4, 8);
-    }
-
-    input.value = value;
-
-    // Sauts automatiques (auto-tab)
-    if (len === 2 && event.data && input.value[2] !== '/') {
-        // Saute au mois après 2 chiffres pour le jour
-        input.value += '/';
-        
-    } else if (len === 4 && event.data && input.value[5] !== '/') {
-        // Saute à l'année après 2 chiffres pour le mois
-        input.value = value.substring(0, 5) + '/' + value.substring(5);
-        
-    } else if (len === 10) {
-        // Saute au champ suivant (Montant) après avoir entré la date complète
-        document.getElementById('montant').focus();
-    }
-}
-
-// Ajout du listener pour la saisie de date
-dateInput.addEventListener('input', handleDateInput);
-
-
-/**
- * Convertit le format JJ/MM/AAAA en AAAA-MM-JJ pour Firebase.
- * @param {string} dateString Date au format JJ/MM/AAAA
+ * Combine le jour (JJ) avec le mois/année (MM/AAAA) du filtre pour créer la date standard.
+ * @param {string} dayString Jour au format JJ (Ex: "09")
  * @returns {string|null} Date au format AAAA-MM-JJ ou null si invalide
  */
-function convertDateToStandard(dateString) {
-    const parts = dateString.split('/');
-    if (parts.length === 3) {
-        const [day, month, year] = parts;
-        // Vérifie le format de base (deux chiffres pour jour/mois, quatre pour l'année)
-        if (day.length === 2 && month.length === 2 && year.length === 4) {
-             // Vérifie si c'est une date valide (utilise le constructeur Date pour la validation)
-            const d = new Date(`${year}-${month}-${day}`);
-            if (d.getFullYear() == year && (d.getMonth() + 1) == month && d.getDate() == day) {
-                return `${year}-${month}-${day}`;
-            }
-        }
+function createStandardDate(dayString) {
+    const monthFilterValue = monthFilter.value; // Format AAAA-MM
+    const day = String(dayString).padStart(2, '0');
+
+    if (!monthFilterValue || !day) return null;
+
+    const date = new Date(`${monthFilterValue}-${day}`);
+    
+    // Vérifie si la date est valide et correspond au mois filtré
+    if (isNaN(date.getTime())) return null;
+
+    const [year, month] = monthFilterValue.split('-');
+    
+    // Assure que le jour est dans le bon mois/année (pour éviter les sauts de mois avec des jours invalides comme 31/02)
+    if (date.getMonth() + 1 !== parseInt(month) || date.getFullYear() !== parseInt(year)) {
+        return null;
     }
-    return null; // Date invalide
+
+    return `${year}-${month}-${day}`; // Format AAAA-MM-JJ
 }
+
+
+/**
+ * Convertit le format AAAA-MM-JJ (BDD) en JJ/MM/AAAA (Affichage UX)
+ * @param {string} standardDate 
+ * @returns {string}
+ */
+function displayDateFormat(standardDate) {
+    if (!standardDate || standardDate.length !== 10) return standardDate;
+    const parts = standardDate.split('-'); // [AAAA, MM, JJ]
+    return `${parts[2]}/${parts[1]}/${parts[0]}`; // JJ/MM/AAAA
+}
+
+/**
+ * Extrait le jour (JJ) à partir du format AAAA-MM-JJ.
+ * @param {string} standardDate 
+ * @returns {number} Jour
+ */
+function getDayFromStandardDate(standardDate) {
+    if (!standardDate || standardDate.length !== 10) return 1;
+    return parseInt(standardDate.split('-')[2], 10);
+}
+
+/**
+ * Remplit le sélecteur de catégorie en fonction du type de transaction.
+ * @param {HTMLSelectElement} selectElement Le sélecteur à remplir.
+ * @param {string} type 'revenu' ou 'depense'.
+ * @param {string} selectedValue La valeur à présélectionner.
+ */
+function populateCategories(selectElement, type, selectedValue = '') {
+    selectElement.innerHTML = '<option value="">-- Choisir une catégorie --</option>';
+    const categories = type === 'revenu' ? REVENUE_CATEGORIES : EXPENSE_CATEGORIES;
+
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        if (cat === selectedValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+}
+
+// Initialiser le sélecteur de catégorie au chargement et ajouter les écouteurs de changement de type
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialisation pour le formulaire principal
+    populateCategories(categorieSelect, 'depense');
+    typeDepenseRadio.addEventListener('change', () => populateCategories(categorieSelect, 'depense'));
+    typeRevenuRadio.addEventListener('change', () => populateCategories(categorieSelect, 'revenu'));
+
+    // Écouteurs pour le modal d'édition
+    editTypeDepenseRadio.addEventListener('change', () => {
+        populateCategories(editCategorieSelect, 'depense');
+    });
+    editTypeRevenuRadio.addEventListener('change', () => {
+        populateCategories(editCategorieSelect, 'revenu');
+    });
+});
+
 
 // =================================================================
 // 4. LOGIQUE D'AUTHENTIFICATION (MODAL)
@@ -122,59 +180,73 @@ initializeMonthFilter();
 // Afficher/Masquer le mot de passe (UX Sécurité)
 window.togglePasswordVisibility = function() {
     const icon = document.querySelector('.toggle-password i');
-    if (authPasswordInput.type === 'password') {
-        authPasswordInput.type = 'text';
+    const input = document.getElementById('auth-password'); 
+    if (input.type === 'password') {
+        input.type = 'text';
         icon.classList.remove('fa-eye');
         icon.classList.add('fa-eye-slash');
     } else {
-        authPasswordInput.type = 'password';
+        input.type = 'password';
         icon.classList.add('fa-eye');
         icon.classList.remove('fa-eye-slash');
     }
 };
 
 // Gestionnaire d'ouverture du modal
-authButton.addEventListener('click', () => {
-    authModal.classList.remove('hidden');
-});
+if (authButton) {
+    authButton.addEventListener('click', () => {
+        authModal.classList.remove('hidden');
+    });
+}
 
 // Gestionnaires de fermeture du modal
-closeButton.addEventListener('click', () => authModal.classList.add('hidden'));
+if (closeButton) {
+    closeButton.addEventListener('click', () => authModal.classList.add('hidden'));
+}
+
 window.addEventListener('click', (e) => {
     if (e.target === authModal) {
         authModal.classList.add('hidden');
     }
+    // Fermeture du modal d'édition
+    if (e.target === editModal) {
+        editModal.classList.add('hidden');
+    }
 });
 
 // Basculer entre Connexion et Inscription
-toggleModeBtn.addEventListener('click', () => {
-    isLoginMode = !isLoginMode;
-    if (isLoginMode) {
-        submitAuthBtn.textContent = 'Connexion';
-        toggleModeBtn.textContent = "Pas de compte ? S'inscrire";
-    } else {
-        submitAuthBtn.textContent = "S'inscrire";
-        toggleModeBtn.textContent = "Déjà un compte ? Se Connecter";
-    }
-});
+if (toggleModeBtn) {
+    toggleModeBtn.addEventListener('click', () => {
+        isLoginMode = !isLoginMode;
+        if (isLoginMode) {
+            submitAuthBtn.textContent = 'Connexion';
+            toggleModeBtn.textContent = "Pas de compte ? S'inscrire";
+        } else {
+            submitAuthBtn.textContent = "S'inscrire";
+            toggleModeBtn.textContent = "Déjà un compte ? Se Connecter";
+        }
+    });
+}
 
 // Soumission du formulaire d'authentification
-authForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = authEmailInput.value;
-    const password = authPasswordInput.value;
+if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = authEmailInput.value;
+        const password = authPasswordInput.value;
 
-    try {
-        if (isLoginMode) {
-            await auth.signInWithEmailAndPassword(email, password);
-        } else {
-            await auth.createUserWithEmailAndPassword(email, password);
+        try {
+            if (isLoginMode) {
+                await auth.signInWithEmailAndPassword(email, password);
+            } else {
+                await auth.createUserWithEmailAndPassword(email, password);
+            }
+            authModal.classList.add('hidden'); // Fermer le modal en cas de succès
+        } catch (error) {
+            alert(`Erreur d'authentification : ${error.message}`);
         }
-        authModal.classList.add('hidden'); // Fermer le modal en cas de succès
-    } catch (error) {
-        alert(`Erreur d'authentification : ${error.message}`);
-    }
-});
+    });
+}
 
 function logout() {
     auth.signOut();
@@ -200,10 +272,17 @@ auth.onAuthStateChanged(user => {
         // Mettre à jour l'UX après déconnexion
         currentUser = null;
         authStatus.innerHTML = '<button id="auth-button" class="btn primary"><i class="fas fa-sign-in-alt"></i> Se Connecter</button>';
-        document.getElementById('auth-button').addEventListener('click', () => authModal.classList.remove('hidden'));
+        
+        // Le nouvel écouteur pour le bouton de connexion doit être réattaché
+        const newAuthButton = document.getElementById('auth-button');
+        if (newAuthButton) {
+            newAuthButton.addEventListener('click', () => authModal.classList.remove('hidden'));
+        }
+
         appContent.classList.add('hidden');
         transactionsTbody.innerHTML = '';
         updateSummary(0, 0);
+        displayCategorySummary({}, {}); // Réinitialiser le résumé par catégorie
         monthFilter.removeEventListener('change', listenForTransactions);
     }
 });
@@ -218,42 +297,122 @@ function getUserTransactionsRef() {
 }
 
 // Ajouter une transaction
-transactionForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+if (transactionForm) {
+    transactionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
+        if (!currentUser) return;
+
+        const dayValue = dayInput.value;
+        const standardDateValue = createStandardDate(dayValue);
+
+        if (!standardDateValue) {
+            alert(`Jour '${dayValue}' invalide pour le mois sélectionné ou format incorrect.`);
+            return; 
+        }
+
+        const type = document.querySelector('input[name="type"]:checked').value;
+        
+        const transaction = {
+            date: standardDateValue, 
+            description: document.getElementById('description').value,
+            type: type, 
+            montant: parseFloat(document.getElementById('montant').value),
+            categorie: document.getElementById('categorie').value,
+            recurrent: document.getElementById('recurrent').checked,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await getUserTransactionsRef().add(transaction);
+            transactionForm.reset();
+            dayInput.value = '';
+            document.getElementById('type-depense').checked = true;
+            populateCategories(categorieSelect, 'depense');
+        } catch (error) {
+            console.error("Erreur lors de l'ajout : ", error);
+            alert("Erreur lors de l'ajout de la transaction.");
+        }
+    });
+}
+
+
+// Modifier une transaction (Ouverture du modal)
+window.openEditModal = async function(id) {
     if (!currentUser) return;
-
-    const rawDateValue = dateInput.value;
-    const standardDateValue = convertDateToStandard(rawDateValue);
-
-    // ** VALIDATION ET CONVERSION DE DATE **
-    if (!standardDateValue) {
-        alert("Format de date invalide. Veuillez utiliser JJ/MM/AAAA (Ex: 09/12/2025).");
-        return; 
-    }
-    // ** FIN DE LA VALIDATION **
-
-    const type = document.querySelector('input[name="type"]:checked').value;
     
-    const transaction = {
-        date: standardDateValue, // Date au format AAAA-MM-JJ pour la BDD et le tri
-        description: document.getElementById('description').value,
-        type: type, 
-        montant: parseFloat(document.getElementById('montant').value),
-        categorie: document.getElementById('categorie').value,
-        recurrent: document.getElementById('recurrent').checked,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
     try {
-        await getUserTransactionsRef().add(transaction);
-        transactionForm.reset();
-        document.getElementById('type-depense').checked = true;
+        const doc = await getUserTransactionsRef().doc(id).get();
+        if (!doc.exists) {
+            alert("Transaction introuvable.");
+            return;
+        }
+        const data = { id: doc.id, ...doc.data() };
+
+        // Remplissage du modal
+        editTransactionIdInput.value = data.id;
+        editMontantInput.value = data.montant;
+        editDescriptionInput.value = data.description;
+        editDayInput.value = getDayFromStandardDate(data.date);
+        editRecurrentCheckbox.checked = data.recurrent;
+
+        // Type de transaction et Catégorie
+        const isRevenu = data.type === 'revenu';
+        if (isRevenu) {
+            editTypeRevenuRadio.checked = true;
+            editTypeDepenseRadio.checked = false;
+        } else {
+            editTypeDepenseRadio.checked = true;
+            editTypeRevenuRadio.checked = false;
+        }
+        
+        // Remplir dynamiquement les catégories, puis sélectionner la bonne
+        populateCategories(editCategorieSelect, data.type, data.categorie);
+        
+        editModal.classList.remove('hidden');
+
     } catch (error) {
-        console.error("Erreur lors de l'ajout : ", error);
-        alert("Erreur lors de l'ajout de la transaction.");
+        console.error("Erreur lors de l'ouverture du modal d'édition : ", error);
+        alert("Impossible de charger la transaction.");
     }
-});
+}
+
+// Sauvegarder les modifications
+if (editTransactionForm) {
+    editTransactionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentUser) return;
+
+        const id = editTransactionIdInput.value;
+        const dayValue = editDayInput.value;
+        const standardDateValue = createStandardDate(dayValue);
+
+        if (!standardDateValue) {
+            alert(`Jour '${dayValue}' invalide pour le mois sélectionné ou format incorrect.`);
+            return; 
+        }
+
+        const type = document.querySelector('input[name="edit-type"]:checked').value;
+
+        const updatedTransaction = {
+            date: standardDateValue,
+            description: editDescriptionInput.value,
+            type: type, 
+            montant: parseFloat(editMontantInput.value),
+            categorie: editCategorieSelect.value,
+            recurrent: editRecurrentCheckbox.checked,
+        };
+
+        try {
+            await getUserTransactionsRef().doc(id).update(updatedTransaction);
+            editModal.classList.add('hidden');
+        } catch (error) {
+            console.error("Erreur lors de la mise à jour : ", error);
+            alert("Erreur lors de la mise à jour de la transaction.");
+        }
+    });
+}
+
 
 // Écouter les changements en temps réel
 function listenForTransactions() {
@@ -261,7 +420,7 @@ function listenForTransactions() {
 
     const [year, month] = monthFilter.value.split('-').map(Number);
     
-    // Pour Firestore, on filtre sur la date au format AAAA-MM-JJ
+    // Filtre de date pour Firestore
     const startDateString = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDayOfMonth = new Date(year, month, 0).getDate();
     const endDateString = `${year}-${String(month).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
@@ -284,17 +443,6 @@ function listenForTransactions() {
         });
 }
 
-/**
- * Convertit le format AAAA-MM-JJ (BDD) en JJ/MM/AAAA (Affichage UX)
- * @param {string} standardDate 
- * @returns {string}
- */
-function displayDateFormat(standardDate) {
-    if (!standardDate || standardDate.length !== 10) return standardDate;
-    const parts = standardDate.split('-'); // [AAAA, MM, JJ]
-    return `${parts[2]}/${parts[1]}/${parts[0]}`; // JJ/MM/AAAA
-}
-
 
 // Afficher les transactions dans le tableau (UX)
 function displayTransactions(transactions) {
@@ -309,7 +457,7 @@ function displayTransactions(transactions) {
         // Affichage de la date au format convivial JJ/MM/AAAA
         row.insertCell().textContent = displayDateFormat(t.date); 
         
-        row.insertCell().textContent = t.description;
+        row.insertCell().textContent = t.description + (t.recurrent ? ' (Rép.)' : '');
         row.insertCell().textContent = t.categorie;
         row.insertCell().innerHTML = t.type === 'revenu' ? '<i class="fas fa-arrow-up revenue-text"></i>' : '<i class="fas fa-arrow-down expense-text"></i>';
 
@@ -318,8 +466,19 @@ function displayTransactions(transactions) {
         montantCell.innerHTML = `<span class="${montantClass}">${montantDisplay}</span>`;
 
         const actionCell = row.insertCell();
+        actionCell.className = 'action-buttons-wrapper';
+        
+        // Bouton Modifier
+        const editButton = document.createElement('button');
+        editButton.innerHTML = '<i class="fas fa-edit"></i>'; 
+        editButton.className = 'edit-button';
+        editButton.title = 'Modifier la transaction';
+        editButton.onclick = () => openEditModal(t.id);
+        actionCell.appendChild(editButton);
+
+        // Bouton Supprimer
         const deleteButton = document.createElement('button');
-        deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>'; // Icône poubelle pour l'UX
+        deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>'; 
         deleteButton.className = 'delete-button';
         deleteButton.title = 'Supprimer la transaction';
         deleteButton.onclick = () => deleteTransaction(t.id);
@@ -327,23 +486,28 @@ function displayTransactions(transactions) {
     });
 }
 
-// Calculer le résumé
+// Calculer le résumé global et par catégorie
 function calculateSummary(transactions) {
     let totalRevenu = 0;
     let totalDepense = 0;
+    const revenueCategories = {};
+    const expenseCategories = {};
 
     transactions.forEach(t => {
         if (t.type === 'revenu') {
             totalRevenu += t.montant;
+            revenueCategories[t.categorie] = (revenueCategories[t.categorie] || 0) + t.montant;
         } else if (t.type === 'depense') {
             totalDepense += t.montant;
+            expenseCategories[t.categorie] = (expenseCategories[t.categorie] || 0) + t.montant;
         }
     });
 
     updateSummary(totalRevenu, totalDepense);
+    displayCategorySummary(revenueCategories, expenseCategories);
 }
 
-// Mettre à jour l'UX du résumé
+// Mettre à jour l'UX du résumé global
 function updateSummary(totalRevenu, totalDepense) {
     const soldeNet = totalRevenu - totalDepense;
 
@@ -358,6 +522,39 @@ function updateSummary(totalRevenu, totalDepense) {
     } else if (soldeNet < 0) {
         soldeNetEl.classList.add('expense-text');
     }
+}
+
+/**
+ * Affiche le résumé des totaux par catégorie.
+ * @param {object} revenues Objet {categorie: total} pour les revenus.
+ * @param {object} expenses Objet {categorie: total} pour les dépenses.
+ */
+function displayCategorySummary(revenues, expenses) {
+    // Fonction utilitaire pour rendre la liste
+    const renderList = (container, totals, type) => {
+        container.innerHTML = '';
+        // Trie par montant décroissant
+        const sortedCategories = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
+        
+        if (sortedCategories.length === 0) {
+            container.innerHTML = `<p style="text-align: center; color: var(--color-subtext);">Pas de ${type} enregistré(e)s ce mois.</p>`;
+            return;
+        }
+
+        sortedCategories.forEach(cat => {
+            const total = totals[cat];
+            const div = document.createElement('div');
+            div.className = 'category-item';
+            div.innerHTML = `
+                <span>${cat}</span>
+                <span class="amount ${type === 'revenu' ? 'revenue-text' : 'expense-text'}">${total.toFixed(2)} €</span>
+            `;
+            container.appendChild(div);
+        });
+    };
+
+    renderList(revenueCategoryListEl, revenues, 'revenu');
+    renderList(expenseCategoryListEl, expenses, 'depense');
 }
 
 // Supprimer une transaction
